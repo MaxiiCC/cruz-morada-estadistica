@@ -1,0 +1,8 @@
+venv/
+data/ventas_completas.csv
+data/ventas_completas.csv.gz
+output/
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
