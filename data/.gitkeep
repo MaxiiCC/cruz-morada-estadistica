@@ -1,0 +1,2 @@
+# Este archivo permite que Git trackee la carpeta data/ aunque esté vacía.
+# Coloca aquí el archivo ventas_completas.csv antes de ejecutar el programa.
