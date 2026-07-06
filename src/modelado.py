@@ -10,20 +10,60 @@ from scipy import stats
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import statsmodels.api as sm
-from statsmodels.stats.diagnostic import het_breuschpagan
+from statsmodels.stats.diagnostic import het_breuschpagan, linear_reset
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 from config import (
-    SEED, ALPHA, TRAIN_SIZE, RUTA_GRAFICOS,
+    SEED, ALPHA, TRAIN_SIZE, RUTA_GRAFICOS, UMBRAL_SHAPIRO,
     COL_CANAL, COL_LOCAL, COL_MONTO, COL_DESCUENTO, COL_EDAD
 )
 
 logger = logging.getLogger(__name__)
 
+
 def _guardar_figura(fig, nombre):
     ruta = RUTA_GRAFICOS / f"{nombre}.png"
     fig.savefig(ruta, bbox_inches="tight", dpi=150)
     plt.close(fig)
+
+
+def _eliminar_colinealidad_perfecta(X, umbral=0.999):
+    """
+    Detecta y elimina columnas con colinealidad perfecta (o casi perfecta)
+    de forma dinámica, en vez de hardcodear un nombre de columna específico
+    (ej. "LOCAL_1999") que solo aplica a este dataset en particular.
+
+    Itera sobre pares de columnas: si dos dummies tienen |correlación| >=
+    umbral, se elimina la segunda y se loggea cuál se sacó y por qué,
+    para que quede documentado en el log (y sea fácil de justificar en
+    el informe técnico) en vez de ser un drop silencioso.
+    """
+    X = X.copy()
+    eliminadas = []
+    cambiado = True
+
+    while cambiado:
+        cambiado = False
+        corr = X.corr().abs()
+        cols = corr.columns.tolist()
+        for i in range(len(cols)):
+            for j in range(i + 1, len(cols)):
+                c_i, c_j = cols[i], cols[j]
+                valor = corr.loc[c_i, c_j]
+                if pd.notna(valor) and valor >= umbral:
+                    logger.warning(
+                        f"Colinealidad casi perfecta detectada entre '{c_i}' y '{c_j}' "
+                        f"(|r|={valor:.4f} >= {umbral}). Se elimina '{c_j}' del modelo."
+                    )
+                    X = X.drop(columns=[c_j])
+                    eliminadas.append({"eliminada": c_j, "correlacionada_con": c_i, "r": round(float(valor), 4)})
+                    cambiado = True
+                    break
+            if cambiado:
+                break
+
+    return X, eliminadas
+
 
 def preparar_features(df):
     df_mod = df.copy()
@@ -45,15 +85,17 @@ def preparar_features(df):
     numericas = numericas.fillna(numericas.median()).astype("float64")
 
     X = pd.concat([numericas, dummies_canal, dummies_local], axis=1)
-
-    # Excluir LOCAL_1999 por colinealidad perfecta con CANAL_POS
-    cols_a_eliminar = [c for c in X.columns if "LOCAL_1999" in c or "LOCAL_1999.0" in c]
-    if cols_a_eliminar:
-        X = X.drop(columns=cols_a_eliminar)
-
     X = X.astype("float64").dropna()
+
+    # Detección dinámica de colinealidad perfecta (reemplaza el hardcode
+    # anterior de "LOCAL_1999"). Si algún LOCAL coincide 1:1 con un CANAL
+    # (ej. un local que solo vende por POS), se detecta y elimina aquí,
+    # documentando la razón en el log en vez de en un comentario fijo.
+    X, colinealidad_eliminada = _eliminar_colinealidad_perfecta(X)
+
     y = y.loc[X.index].astype("float64")
-    return X, y
+    return X, y, colinealidad_eliminada
+
 
 def calcular_vif(X):
     X_con_const = sm.add_constant(X)
@@ -65,8 +107,9 @@ def calcular_vif(X):
     vif_data["Evaluacion"] = vif_data["VIF"].apply(lambda v: "⚠️ Problemático" if v > 10 else ("⚠️ Moderado" if v > 5 else "✓ Aceptable"))
     return vif_data.round(2)
 
+
 def entrenar_modelo(df):
-    X, y = preparar_features(df)
+    X, y, colinealidad_eliminada = preparar_features(df)
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=TRAIN_SIZE, random_state=SEED)
 
     X_train_sm = sm.add_constant(X_train)
@@ -83,9 +126,27 @@ def entrenar_modelo(df):
     rmse_test = np.sqrt(mean_squared_error(y_test, y_pred_test))
     mae_test = mean_absolute_error(y_test, y_pred_test)
 
+    # --- Diagnóstico de supuestos ---
+    # 1. Homocedasticidad
     bp_lm, bp_p, bp_f, bp_fp = het_breuschpagan(residuales, X_train_sm)
-    muestra_resid = std_resid.sample(min(5000, len(std_resid)), random_state=SEED)
+
+    # 2. Normalidad de residuales (usa el mismo umbral que eda.py, en vez
+    # de un 5000 hardcodeado suelto en este módulo)
+    muestra_resid = std_resid.sample(min(UMBRAL_SHAPIRO, len(std_resid)), random_state=SEED)
     sw_stat, sw_p = stats.shapiro(muestra_resid)
+
+    # 3. Linealidad (Ramsey RESET). Antes solo se testeaba homocedasticidad
+    # y normalidad, pero la rúbrica pide explícitamente el supuesto de
+    # linealidad también. RESET agrega potencias de los valores ajustados
+    # y prueba si mejoran significativamente el ajuste (si es así, hay
+    # evidencia de mala especificación funcional/no linealidad).
+    try:
+        reset_res = linear_reset(modelo, power=2, use_f=True)
+        reset_stat = float(reset_res.fvalue)
+        reset_p = float(reset_res.pvalue)
+    except Exception as e:
+        logger.warning(f"No se pudo calcular el test RESET de linealidad: {e}")
+        reset_stat, reset_p = None, None
 
     vif_df = calcular_vif(X_train)
 
@@ -119,6 +180,9 @@ def entrenar_modelo(df):
         "RMSE_test": round(rmse_test, 2), "MAE_test": round(mae_test, 2),
         "breusch_pagan": {"LM": bp_lm, "p_value": bp_p, "homocedastico": bp_p > ALPHA},
         "normalidad_residuales": {"SW_stat": sw_stat, "p_value": sw_p, "es_normal": sw_p > ALPHA},
+        "linealidad_reset": {"F_statistic": reset_stat, "p_value": reset_p,
+                              "es_lineal": (reset_p > ALPHA) if reset_p is not None else None},
         "vif": vif_df.to_dict("records"),
-        "coeficientes": coef_df.to_dict("records")
+        "coeficientes": coef_df.to_dict("records"),
+        "colinealidad_eliminada": colinealidad_eliminada
     }
