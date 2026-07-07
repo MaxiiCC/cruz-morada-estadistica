@@ -97,7 +97,7 @@ La semilla se lee desde la variable de entorno `CPYD_SEED` (por defecto 42). Est
 
 ## Integrantes
 
-| Nombre | Rol |
+| Nombre |
 |---|---|
-| [Nombre 1] | Desarrollo y análisis |
-| [Nombre 2] | Desarrollo y análisis |
+| Martin Cerda | 
+| Maximiliano Campos | 
