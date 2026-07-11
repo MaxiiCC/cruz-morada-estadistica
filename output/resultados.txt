@@ -1,0 +1,106 @@
+RESULTADOS DEL ANÁLISIS ESTADÍSTICO — CRUZ MORADA
+Generado: 06/07/2026 23:44:51
+Semilla (CPYD_SEED): 42
+======================================================================
+
+==============================================================
+1. PREPROCESAMIENTO Y LIMPIEZA
+==============================================================
+  Filas finales del dataset: 3.242.878
+  Canales detectados: POS, WEB, CCT, APP
+
+  VALORES FALTANTES:
+    PORCENTAJE_DESCUENTO: 0 faltantes | MCAR (proxy Mann-Whitney): N/D | Método: Imputación por mediana
+    FECHA_NACIMIENTO: 0 faltantes | MCAR (proxy Mann-Whitney): N/D | Método: Eliminación de filas (no se imputa una fecha de nacimiento)
+
+  OUTLIERS (método IQR, 1.5×RIC):
+    Total outliers (MONTO APLICADO): 215.264 (6,6%)
+    MONTO APLICADO: límites=[-4.775,50, 20.612,50] -> 212.494 outliers
+    PORCENTAJE DESCUENTO: límites=[0,12, 0,73] -> 13.669 outliers
+
+==============================================================
+2. ANÁLISIS EXPLORATORIO (EDA)
+==============================================================
+  [MONTO APLICADO] Media=10.179,98 | Mediana=7.662,00 | Asimetría=9,0603 | Curtosis=108,2274
+  [UNIDADES] Media=1,00 | Mediana=1,00 | Asimetría=0,0000 | Curtosis=0,0000
+  [PORCENTAJE DESCUENTO] Media=0,39 | Mediana=0,40 | Asimetría=0,2969 | Curtosis=2,8496
+  [MONTO_POR_UNIDAD] Media=10.179,98 | Mediana=7.662,00 | Asimetría=9,0603 | Curtosis=108,2274
+  [EDAD] Media=49,57 | Mediana=48,60 | Asimetría=0,2422 | Curtosis=-0,7829
+  [FRECUENCIA_COMPRA] Media=5,65 | Mediana=4,00 | Asimetría=3,2557 | Curtosis=21,5178
+
+  TESTS DE NORMALIDAD:
+    MONTO APLICADO (Kolmogorov-Smirnov): p=<0,001 -> No normal
+    UNIDADES (Kolmogorov-Smirnov): p=nan -> No normal
+    PORCENTAJE DESCUENTO (Kolmogorov-Smirnov): p=<0,001 -> No normal
+    MONTO_POR_UNIDAD (Kolmogorov-Smirnov): p=<0,001 -> No normal
+    EDAD (Kolmogorov-Smirnov): p=<0,001 -> No normal
+    FRECUENCIA_COMPRA (Kolmogorov-Smirnov): p=<0,001 -> No normal
+
+  CHI-CUADRADO (CANAL vs LOCAL): p=<0,001 | Cramér's V=0,58
+  ANOVA (MONTO por CANAL): F=152,54, p=<0,001
+  Kruskal-Wallis (MONTO por CANAL): p=<0,001 -> Significativo
+
+  MATRIZ DE CORRELACIÓN: método(s) usado(s) según normalidad -> Spearman
+  (ver output/graficos/matriz_correlacion.png para coeficientes y significancia con *)
+
+==============================================================
+3. INFERENCIA ESTADÍSTICA
+==============================================================
+  [H1_app_vs_web] p=0,3604 -> No rechaza H0 ✗
+  [H2_descuento_unidades] p=1,0 -> No rechaza H0 ✗
+      β₁=0,0000 | R²=0,0000 | ρ Spearman=0,0000
+      Nota: UNIDADES es constante en los datos, no aplica regresión.
+  [H3_edad_ticket] p=<0,001 -> Rechaza H0 ✓
+  [H4_local_monto] p=<0,001 -> Rechaza H0 ✓
+  [H5_frecuencia_descuento] p=<0,001 -> Rechaza H0 ✓
+
+==============================================================
+4. MODELADO — REGRESIÓN OLS
+==============================================================
+  Observaciones: train=2.270.014 | test=972.864
+  R²: 0,1669 | R² ajustado: 0,1669
+  AIC: 49.514.082,05 | BIC: 49.514.271,58
+  RMSE (test): 13.202,29 CLP
+  MAE  (test): 6.238,15 CLP
+
+  DIAGNÓSTICO DE SUPUESTOS:
+    Homocedasticidad (Breusch-Pagan): p=<0,001 -> Heterocedástico
+    Normalidad de residuales (Shapiro-Wilk): p=<0,001 -> No normal
+    Linealidad (Ramsey RESET): p=<0,001 -> Posible mala especificación
+
+  VARIABLES EXCLUIDAS POR COLINEALIDAD PERFECTA:
+    LOCAL_1999 (r=1.0 con CANAL_POS)
+
+  VIF (Top 5 Multicolinealidad):
+    LOCAL_OTRO: VIF=17,41 (⚠️ Problemático)
+    CANAL_POS: VIF=11,88 (⚠️ Problemático)
+    CANAL_WEB: VIF=2,78 (✓ Aceptable)
+    LOCAL_745: VIF=2,30 (✓ Aceptable)
+    LOCAL_87: VIF=2,11 (✓ Aceptable)
+
+==============================================================
+5. SERIES DE TIEMPO
+==============================================================
+  N° Días Analizados: 390
+  Media Diaria: 84.677.215,53 CLP
+  ADF: p=0,8371 -> No estacionaria
+  KPSS: p=0,01 -> No estacionaria
+  Fuerza Tendencia: 0,95
+  Fuerza Estacional: 0,92
+  Lag con mayor autocorrelación: 7 (ACF=0,9254)
+  ACF en lag 7 (estacionalidad semanal): 0,9254
+
+==============================================================
+6. PROCESAMIENTO PARALELO
+==============================================================
+  Núcleos usados: 6
+  N° particiones/tareas: 32
+  Tiempo secuencial: 48,5490s
+  Tiempo paralelo: 28,2625s
+  Speedup: 1,72x
+  Eficiencia: 28,63%
+  Consistencia sec/par: Idénticos ✓
+
+======================================================================
+FIN DEL REPORTE
+======================================================================

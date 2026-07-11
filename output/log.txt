@@ -1,0 +1,10 @@
+[2026-07-06 23:39:13] INFO     carga_datos — Carga completa: 3,242,878 filas leídas, 3,242,878 filas finales (0.00% descartadas por filtro temprano), 0 bloque(s) con error de filtrado, tiempo=36.86s
+[2026-07-06 23:41:27] INFO     matplotlib.category — Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+[2026-07-06 23:41:30] INFO     matplotlib.category — Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+[2026-07-06 23:41:52] WARNING  inferencia — H2: UNIDADES es constante en los datos, no se puede ajustar una regresión no degenerada.
+[2026-07-06 23:42:08] INFO     inferencia — H4: se excluyeron 1 local(es) con menos de 5 observaciones.
+[2026-07-06 23:42:27] WARNING  modelado — Colinealidad casi perfecta detectada entre 'CANAL_POS' y 'LOCAL_1999' (|r|=1.0000 >= 0.999). Se elimina 'LOCAL_1999' del modelo.
+[2026-07-06 23:43:31] INFO     series_tiempo — Ventas diarias: se interpolaron 149 día(s) sin transacciones registradas.
+[2026-07-06 23:43:34] INFO     paralelismo — Benchmark paralelo: 32 tareas, 6 núcleos disponibles, usando 6 proceso(s)
+[2026-07-06 23:44:51] INFO     paralelismo — Verificación de consistencia: los resultados secuencial y paralelo son idénticos.
+[2026-07-06 23:44:51] INFO     paralelismo — Secuencial: 48.5490s | Paralelo: 28.2625s | Speedup: 1.72x | Eficiencia: 28.63%
